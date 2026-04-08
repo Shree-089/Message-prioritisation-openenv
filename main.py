@@ -1,42 +1,36 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from env import MessageEnv, Action
-from data import messages
+from openenv import Environment, Action as BaseAction, Observation as BaseObservation
+from pydantic import Field
+from typing import Tuple, Dict, Any
 
-app = FastAPI()
+class Observation(BaseObservation):
+    message: str = Field(..., description="Message text to classify")
 
-env = MessageEnv(messages)
+class Action(BaseAction):
+    label: int = Field(..., description="0 = not important, 1 = important")
 
-class ActionRequest(BaseModel):
-    label: int
+class MessageEnv(Environment):
+    def __init__(self, messages):
+        super().__init__()
+        self.messages = messages
+        self.index = 0
 
-@app.get("/reset")          # ← changed from POST to GET
-def reset():
-    state = env.reset()
-    return {
-        "observation": {
-            "message": state.message
-        }
-    }
+    def reset(self) -> Observation:
+        self.index = 0
+        return self._get_observation()
 
-@app.get("/state")          # ← added GET /state endpoint
-def state():
-    obs = env.state()
-    return {
-        "observation": {
-            "message": obs.message
-        }
-    }
+    def state(self) -> Observation:
+        return self._get_observation()
 
-@app.post("/step")
-def step(action: ActionRequest):
-    act = Action(label=action.label)
-    next_state, reward, done, info = env.step(act)
-    return {
-        "observation": {
-            "message": next_state.message
-        },
-        "reward": reward,
-        "done": done,
-        "info": info
-    }
+    def _get_observation(self) -> Observation:
+        msg, _ = self.messages[self.index]
+        return Observation(message=msg)
+
+    def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
+        if action.label not in [0, 1]:
+            raise ValueError("Invalid action")
+        msg, true_label = self.messages[self.index]
+        reward_value = 1.0 if action.label == true_label else -1.0
+        self.index += 1
+        done = self.index >= len(self.messages)
+        next_obs = Observation(message=msg) if done else self._get_observation()
+        return next_obs, reward_value, done, {}
