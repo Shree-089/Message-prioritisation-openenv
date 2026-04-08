@@ -10,18 +10,28 @@ env = MessageEnv(messages)
 class ActionRequest(BaseModel):
     label: int
 
+
 @app.post("/reset")
 def reset():
     state = env.reset()
-    return {"message": state.message}
+
+    return {
+        "observation": {
+            "message": state.message
+        }
+    }
+
 
 @app.post("/step")
 def step(action: ActionRequest):
     act = Action(label=action.label)
-    next_state, reward, done, _ = env.step(act)
+    next_state, reward, done, info = env.step(act)
 
     return {
-        "message": next_state.message,
+        "observation": {
+            "message": next_state.message
+        },
         "reward": reward,
-        "done": done
+        "done": done,
+        "info": info
     }
