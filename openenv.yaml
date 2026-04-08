@@ -1,0 +1,16 @@
+name: message-prioritization
+version: "1.0"
+description: A message prioritization RL environment
+entrypoint: app.py
+port: 8000
+observation:
+  type: object
+  properties:
+    message:
+      type: string
+action:
+  type: object
+  properties:
+    label:
+      type: integer
+      enum: [0, 1]
