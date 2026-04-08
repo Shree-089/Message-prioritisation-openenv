@@ -9,10 +9,10 @@ class Observation(BaseModel):
 class Action(BaseModel):
     label: int = Field(..., description="0 = not important, 1 = important")
 
-
 # REWARD MODEL
 class Reward(BaseModel):
     value: float = Field(..., description="Reward score")
+
 
 class MessageEnv:
     def __init__(self, messages):
@@ -33,12 +33,12 @@ class MessageEnv:
         msg, _ = self.messages[self.index]
         return Observation(message=msg)
 
-    # STEP FUNCTION (STRICT)
+    # STEP FUNCTION (FIXED)
     def step(self, action: Action) -> Tuple[Observation, float, bool, Dict[str, Any]]:
 
         if action.label not in [0, 1]:
-           raise ValueError("Invalid action")
-        
+            raise ValueError("Invalid action")
+
         msg, true_label = self.messages[self.index]
 
         # reward logic
@@ -47,6 +47,11 @@ class MessageEnv:
         self.index += 1
         done = self.index >= len(self.messages)
 
-        next_obs = None if done else self._get_observation()
+        # ✅ FIX: NEVER return None
+        if done:
+            # return last valid observation again
+            next_obs = Observation(message=msg)
+        else:
+            next_obs = self._get_observation()
 
         return next_obs, reward_value, done, {}
